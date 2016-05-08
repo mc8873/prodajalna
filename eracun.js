@@ -175,6 +175,7 @@ var strankaTrenutna = function(racunId, callback) {
         callback(vrstice);
       }
     })
+    
 }
 
 // Izpis računa v HTML predstavitvi na podlagi podatkov iz baze
