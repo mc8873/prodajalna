@@ -164,6 +164,19 @@ var strankaIzRacuna = function(racunId, callback) {
     })
 }
 
+var strankaTrenutna = function(racunId, callback) {
+    pb.all("SELECT Customer.* FROM Customer \
+            WHERE Customer.CustomerId = " + racunId,
+    function(napaka, vrstice) {
+      if(napaka){
+        callback(false);
+      }
+      else {
+        callback(vrstice);
+      }
+    })
+}
+
 // Izpis računa v HTML predstavitvi na podlagi podatkov iz baze
 streznik.post('/izpisiRacunBaza', function(zahteva, odgovor) {
   var form = new formidable.IncomingForm();
@@ -199,20 +212,25 @@ streznik.post('/izpisiRacunBaza', function(zahteva, odgovor) {
 
 // Izpis računa v HTML predstavitvi ali izvorni XML obliki
 streznik.get('/izpisiRacun/:oblika', function(zahteva, odgovor) {
-  pesmiIzKosarice(zahteva, function(pesmi) {
-    if (!pesmi) {
-      odgovor.sendStatus(500);
-    } else if (pesmi.length == 0) {
-      odgovor.send("<p>V košarici nimate nobene pesmi, \
-        zato računa ni mogoče pripraviti!</p>");
-    } else {
-      odgovor.setHeader('content-type', 'text/xml');
-      odgovor.render('eslog', {
-        vizualiziraj: zahteva.params.oblika == 'html' ? true : false,
-        postavkeRacuna: pesmi
-      })  
-    }
-  })
+    
+    var racun = zahteva.session.stranka;
+    strankaTrenutna(racun , function (podatkiRacuna){
+      pesmiIzKosarice(zahteva, function(pesmi) {
+        if (!pesmi) {
+          odgovor.sendStatus(500);
+        } else if (pesmi.length == 0) {
+          odgovor.send("<p>V košarici nimate nobene pesmi, \
+            zato računa ni mogoče pripraviti!</p>");
+        } else {
+          odgovor.setHeader('content-type', 'text/xml');
+          odgovor.render('eslog', {
+            vizualiziraj: zahteva.params.oblika == 'html' ? true : false,
+            postavkeRacuna: pesmi, narocnik: podatkiRacuna
+          })  
+        }
+      })
+    })
+    
 })
 
 // Privzeto izpiši račun v HTML obliki
@@ -287,6 +305,7 @@ streznik.post('/stranka', function(zahteva, odgovor) {
   
   form.parse(zahteva, function (napaka1, polja, datoteke) {
     zahteva.session.zadnji = "prijava";
+    zahteva.session.stranka = polja.seznamStrank;
     odgovor.redirect('/')
   });
 })
@@ -294,6 +313,7 @@ streznik.post('/stranka', function(zahteva, odgovor) {
 // Odjava stranke
 streznik.post('/odjava', function(zahteva, odgovor) {
     zahteva.session.zadnji=null;
+    zahteva.session.stranka=null;
     odgovor.redirect('/prijava') 
 })
 
